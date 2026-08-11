@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String            @id @default(cuid())
+  name         String
+  username     String            @unique
+  email        String            @unique
+  avatar       String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  profile      UserProfile?
+  plans        Plan[]            @relation("UserCreatedPlans")
+  attempts     PlanAttempt[]
+  reactions    Reaction[]
+  comments     Comment[]
+  savedPlans   SavedPlan[]
+  remixes      Remix[]           @relation("UserRemixes")
+  achievements UserAchievement[]
+}
+
+model UserProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                 String?
+  city                String   @default("Chandigarh")
+  totalPlansCompleted Int      @default(0)
+  totalMoneySpent     Int      @default(0)
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  slug  String @unique
+  plans Plan[]
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  slug  String    @unique
+  plans PlanTag[]
+}
+
+model Plan {
+  id               String         @id @default(cuid())
+  slug             String         @unique
+  title            String
+  description      String
+  creatorId        String?
+  creator          User?          @relation("UserCreatedPlans", fields: [creatorId], references: [id])
+  categoryId       String
+  category         Category       @relation(fields: [categoryId], references: [id])
+  budgetMin        Int            @default(0)
+  budgetMax        Int            @default(300)
+  durationMin      Int            @default(30)
+  durationMax      Int            @default(120)
+  groupSizeMin     Int            @default(1)
+  groupSizeMax     Int            @default(4)
+  energyLevel      String         @default("LETS_GO")
+  bestTime         String         @default("ANYTIME")
+  indoorOutdoor    String         @default("BOTH")
+  city             String         @default("Chandigarh")
+  latitude         Float?
+  longitude        Float?
+  coverImage       String?
+  completionCount  Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  steps            PlanStep[]
+  tags             PlanTag[]
+  playlists        PlanPlaylist[]
+  attempts         PlanAttempt[]
+  reactions        Reaction[]
+  comments         Comment[]
+  savedPlans       SavedPlan[]
+  remixesAsOriginal Remix[]       @relation("OriginalPlan")
+  remixesAsDerived  Remix[]       @relation("DerivedPlan")
+
+  @@index([city, categoryId, budgetMax])
+}
+
+model PlanTag {
+  planId String
+  tagId  String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([planId, tagId])
+}
+
+model PlanStep {
+  id              String @id @default(cuid())
+  planId          String
+  plan            Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  order           Int
+  title           String
+  description     String
+  durationMinutes Int    @default(30)
+
+  @@index([planId, order])
+}
+
+model Playlist {
+  id              String         @id @default(cuid())
+  title           String
+  description     String
+  provider        String         @default("SPOTIFY")
+  externalUrl     String
+  coverImage      String
+  songCount       Int            @default(12)
+  durationMinutes Int            @default(45)
+  mood            String         @default("HYPE")
+  plans           PlanPlaylist[]
+  createdAt       DateTime       @default(now())
+}
+
+model PlanPlaylist {
+  planId         String
+  playlistId     String
+  relevanceScore Int      @default(100)
+  plan           Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  playlist       Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([planId, playlistId])
+}
+
+model PlanAttempt {
+  id             String   @id @default(cuid())
+  planId         String
+  userId         String
+  plan           Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actualCost     Int
+  actualDuration Int
+  rating         Int
+  review         String?
+  completedAt    DateTime @default(now())
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  planId    String
+  userId    String
+  type      String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([planId, userId, type])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  planId    String
+  userId    String
+  content   String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SavedPlan {
+  userId    String
+  planId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, planId])
+}
+
+model Remix {
+  id             String   @id @default(cuid())
+  originalPlanId String
+  remixPlanId    String
+  creatorId      String
+  originalPlan   Plan     @relation("OriginalPlan", fields: [originalPlanId], references: [id])
+  remixPlan      Plan     @relation("DerivedPlan", fields: [remixPlanId], references: [id])
+  creator        User     @relation("UserRemixes", fields: [creatorId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  title       String
+  description String
+  badgeIcon   String
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+}
